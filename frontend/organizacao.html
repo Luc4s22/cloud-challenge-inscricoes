@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organização | Inscrições da Semana Acadêmica</title>
+    <title>Inscrições | Semana Acadêmica</title>
     <link rel="stylesheet" href="{% static 'frontend/style.css' %}">
     <link rel="stylesheet" href="{% static 'frontend/organizacao.css' %}">
 </head>
@@ -13,62 +13,56 @@
         <div class="container nav-content nav-organizacao">
             <div class="nav-links">
                 <a href="/">Voltar aos eventos</a>
-                <a href="/admin/">Administração</a>
             </div>
         </div>
     </nav>
 
     <header class="cabecalho-organizacao">
         <div class="container">
-            <p class="subtitulo-organizacao">Acesso restrito à equipe</p>
-            <h1>Inscrições por evento</h1>
-            <p>Consulte participantes confirmados sem expor dados pessoais no site público.</p>
+            <h1>Lista de inscrições</h1>
+            <p>Participantes inscritos nos eventos da Semana Acadêmica.</p>
         </div>
     </header>
 
     <main class="container conteudo-organizacao">
-        <section class="painel-organizacao" aria-labelledby="titulo-filtros">
-            <h2 id="titulo-filtros">Consultar inscrições</h2>
+        <section class="painel-organizacao" aria-labelledby="titulo-planilha">
+            <h2 id="titulo-planilha">Inscrições realizadas</h2>
             <div class="filtros-organizacao">
                 <div>
-                    <label for="selecionar-evento-org">Evento</label>
-                    <select id="selecionar-evento-org">
-                        <option value="">Carregando eventos...</option>
-                    </select>
+                    <label for="buscar-inscrito">Pesquisar</label>
+                    <input id="buscar-inscrito" type="search" placeholder="Nome, e-mail ou evento" autocomplete="off">
                 </div>
                 <div>
-                    <label for="buscar-inscrito">Buscar participante</label>
-                    <input id="buscar-inscrito" type="search" placeholder="Nome ou e-mail">
+                    <label for="filtrar-evento">Evento</label>
+                    <select id="filtrar-evento">
+                        <option value="">Todos os eventos</option>
+                    </select>
                 </div>
                 <button id="atualizar-inscritos" type="button">Atualizar</button>
             </div>
-            <p id="status-organizacao" role="status" aria-live="polite">Carregando...</p>
-        </section>
 
-        <section class="painel-organizacao" aria-labelledby="titulo-inscritos">
-            <div class="cabecalho-lista-organizacao">
-                <div>
-                    <h2 id="titulo-inscritos">Participantes inscritos</h2>
-                    <p id="resumo-organizacao">Selecione um evento para visualizar os inscritos.</p>
-                </div>
-            </div>
+            <p id="resumo-organizacao" aria-live="polite">Carregando inscrições...</p>
+            <p id="status-organizacao" role="status" aria-live="polite"></p>
+
             <div class="tabela-rolavel">
                 <table class="tabela-inscritos">
                     <thead>
                         <tr>
-                            <th scope="col">Nome</th>
+                            <th scope="col">Nº</th>
+                            <th scope="col">Nome do participante</th>
                             <th scope="col">E-mail</th>
+                            <th scope="col">Evento</th>
                             <th scope="col">Status</th>
                             <th scope="col">Data da inscrição</th>
                         </tr>
                     </thead>
                     <tbody id="corpo-inscritos">
-                        <tr><td colspan="4">Nenhum evento selecionado.</td></tr>
+                        <tr><td colspan="6">Carregando...</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
-        <p class="aviso-privacidade">Os dados dos participantes são exclusivos para organização do evento. Não compartilhe publicamente esta listagem.</p>
+        <p class="aviso-privacidade">Acesso restrito à organização. Esta planilha contém dados pessoais dos participantes.</p>
     </main>
     <script src="{% static 'frontend/organizacao.js' %}"></script>
 </body>

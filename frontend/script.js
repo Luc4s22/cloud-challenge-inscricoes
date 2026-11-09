@@ -218,3 +218,115 @@ carregarEventos().catch(erro => {
     inserirTexto(listaEventos, 'aviso-lista',
         'Não foi possível carregar os eventos. Verifique sua conexão e atualize a página.');
 });
+
+/* INSCRICOES_NA_HOME_V1: mostra a planilha no fim da pÃ¡gina inicial.
+   O backend mantÃ©m a autorizaÃ§Ã£o: pessoas nÃ£o logadas NÃƒO recebem dados pessoais. */
+;(() => {
+    'use strict';
+    const corpo = document.getElementById('corpo-planilha-inscricoes');
+    const estado = document.getElementById('estado-planilha-inscricoes');
+    const botao = document.getElementById('atualizar-planilha-inscricoes');
+    const acesso = document.getElementById('acesso-planilha-inscricoes');
+    if (!corpo || !estado || !botao || !acesso) return;
+
+    function escreverLinha(valores) {
+        const linha = document.createElement('tr');
+        valores.forEach(valor => {
+            const coluna = document.createElement('td');
+            coluna.textContent = valor === null || valor === undefined ? 'â€”' : String(valor);
+            linha.appendChild(coluna);
+        });
+        corpo.appendChild(linha);
+    }
+
+    function linhaDeAviso(texto) {
+        corpo.replaceChildren();
+        const linha = document.createElement('tr');
+        const celula = document.createElement('td');
+        celula.colSpan = 6;
+        celula.textContent = texto;
+        linha.appendChild(celula);
+        corpo.appendChild(linha);
+    }
+
+    function dataBrasileira(valor) {
+        if (!valor) return 'â€”';
+        const data = new Date(valor);
+        return Number.isNaN(data.getTime()) ? 'â€”' : data.toLocaleString('pt-BR', {
+            dateStyle: 'short', timeStyle: 'short'
+        });
+    }
+
+    async function lerJson(url) {
+        const resposta = await fetch(url, {
+            credentials: 'same-origin',
+            cache: 'no-store'
+        });
+        if (resposta.status === 401 || resposta.status === 403) {
+            const erro = new Error('Somente a equipe organizadora pode visualizar os inscritos.');
+            erro.acessoNegado = true;
+            throw erro;
+        }
+        if (!resposta.ok) throw new Error('NÃ£o foi possÃ­vel consultar as inscriÃ§Ãµes. HTTP ' + resposta.status);
+        const dados = await resposta.json();
+        if (!Array.isArray(dados)) throw new Error('A API retornou um formato inesperado.');
+        return dados;
+    }
+
+    let carregamentoAtual = 0;
+    async function carregarPlanilha() {
+        const id = ++carregamentoAtual;
+        botao.disabled = true;
+        acesso.hidden = true;
+        estado.textContent = 'Carregando inscriÃ§Ãµes...';
+        linhaDeAviso('Buscando informaÃ§Ãµes...');
+        try {
+            const eventosDaApi = await lerJson('/api/eventos');
+            const porEvento = await Promise.all(eventosDaApi.map(async evento => {
+                const lista = await lerJson('/api/eventos/' + encodeURIComponent(evento.id) + '/inscricoes');
+                return lista.map(inscricao => ({
+                    id: inscricao.id,
+                    nome: inscricao.participante?.nome || 'â€”',
+                    email: inscricao.participante?.email || 'â€”',
+                    evento: evento.titulo || 'â€”',
+                    status: inscricao.status || 'â€”',
+                    data: inscricao.criada_em
+                }));
+            }));
+            if (id !== carregamentoAtual) return;
+            const inscricoes = porEvento.flat();
+            inscricoes.sort((a, b) => (Date.parse(b.data) || 0) - (Date.parse(a.data) || 0));
+            corpo.replaceChildren();
+            inscricoes.forEach(item => escreverLinha([
+                item.id, item.nome, item.email, item.evento, item.status, dataBrasileira(item.data)
+            ]));
+            if (inscricoes.length === 0) linhaDeAviso('Ainda nÃ£o hÃ¡ inscriÃ§Ãµes cadastradas.');
+            estado.textContent = inscricoes.length + (inscricoes.length === 1 ? ' inscriÃ§Ã£o registrada.' : ' inscriÃ§Ãµes registradas.');
+        } catch (erro) {
+            if (id !== carregamentoAtual) return;
+            linhaDeAviso(erro.acessoNegado ? 'A lista Ã© restrita Ã  equipe organizadora.' : 'NÃ£o foi possÃ­vel carregar a lista.');
+            estado.textContent = erro.message || 'Erro ao consultar inscriÃ§Ãµes.';
+            acesso.hidden = !erro.acessoNegado;
+        } finally {
+            if (id === carregamentoAtual) botao.disabled = false;
+        }
+    }
+
+    botao.addEventListener('click', carregarPlanilha);
+
+    // Depois de uma inscriÃ§Ã£o bem-sucedida, atualiza a tabela sem mudar de pÃ¡gina.
+    const mensagemFormulario = document.getElementById('mensagem-inscricao');
+    if (mensagemFormulario && typeof MutationObserver !== 'undefined') {
+        let mensagemAnterior = '';
+        const observador = new MutationObserver(() => {
+            const texto = mensagemFormulario.textContent.trim();
+            if (texto !== mensagemAnterior) {
+                mensagemAnterior = texto;
+                if (/inscri[cÃ§][aÃ£]o.*confirmad/i.test(texto)) carregarPlanilha();
+            }
+        });
+        observador.observe(mensagemFormulario, { childList: true, subtree: true, characterData: true });
+    }
+
+    carregarPlanilha();
+})();

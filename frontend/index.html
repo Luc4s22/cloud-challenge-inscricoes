@@ -163,6 +163,38 @@
             </p>
         </section>
 
+            <!-- INSCRICOES_NA_HOME_V1 -->
+        <!-- Tabela de inscriÃ§Ãµes na MESMA pÃ¡gina de eventos (somente equipe autenticada). -->
+        <section class="planilha-inscricoes" id="planilha-inscricoes" aria-labelledby="titulo-planilha">
+            <div class="planilha-inscricoes-topo">
+                <div>
+                    <h2 id="titulo-planilha">InscriÃ§Ãµes realizadas</h2>
+                    <p>Confira as inscriÃ§Ãµes registradas nos eventos da Semana AcadÃªmica.</p>
+                </div>
+                <button type="button" class="planilha-inscricoes-atualizar" id="atualizar-planilha-inscricoes">Atualizar lista</button>
+            </div>
+            <p id="estado-planilha-inscricoes" role="status" aria-live="polite">Carregando inscriÃ§Ãµes...</p>
+            <div class="planilha-inscricoes-rolagem">
+                <table class="planilha-inscricoes-tabela" aria-label="Tabela de inscritos da Semana AcadÃªmica">
+                    <thead>
+                        <tr>
+                            <th scope="col">NÂº</th>
+                            <th scope="col">Participante</th>
+                            <th scope="col">E-mail</th>
+                            <th scope="col">Evento</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Data da inscriÃ§Ã£o</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-planilha-inscricoes">
+                        <tr><td colspan="6">Buscando informaÃ§Ãµes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p id="acesso-planilha-inscricoes" class="planilha-inscricoes-acesso" hidden>
+                Para visualizar os nomes e e-mails, <a href="/admin/login/?next=%2F%23planilha-inscricoes">entre como organizador</a>.
+            </p>
+        </section>
     </main>
 
     <footer>

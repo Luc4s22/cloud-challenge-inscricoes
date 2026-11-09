@@ -1,137 +1,128 @@
-/* Área restrita: o backend exige login de colaborador para este HTML e para a API. */
-const seletor = document.getElementById('selecionar-evento-org');
+// Página de leitura: exibe as inscrições existentes, sem editar ou excluir dados.
+// A rota /organizacao/ e a API de inscritos exigem usuário organizador autenticado.
 const busca = document.getElementById('buscar-inscrito');
+const filtroEvento = document.getElementById('filtrar-evento');
 const atualizar = document.getElementById('atualizar-inscritos');
-const status = document.getElementById('status-organizacao');
 const resumo = document.getElementById('resumo-organizacao');
+const statusPagina = document.getElementById('status-organizacao');
 const corpo = document.getElementById('corpo-inscritos');
-let inscritos = [];
-let carregamentoId = 0;
 
-function textoStatus(texto, erro = false) {
-    status.textContent = texto;
-    status.className = erro ? 'erro' : '';
-}
+let todasInscricoes = [];
 
-function formatarDataInscricao(valor) {
-    const data = new Date(valor);
-    return Number.isNaN(data.getTime()) ? '—' : data.toLocaleString('pt-BR', {
-        dateStyle: 'short', timeStyle: 'short'
-    });
-}
-
-async function consultarJson(url) {
-    const resposta = await fetch(url, {credentials: 'same-origin', cache: 'no-store'});
+async function buscarJson(url) {
+    const resposta = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
     if (resposta.status === 401 || resposta.status === 403) {
-        throw new Error('Acesso não autorizado. Entre novamente na área administrativa.');
+        throw new Error('Acesso restrito. Entre como organizador para visualizar os inscritos.');
     }
-    if (!resposta.ok) throw new Error(`Falha ao consultar a API (HTTP ${resposta.status}).`);
+    if (!resposta.ok) {
+        throw new Error(`Não foi possível buscar as inscrições (HTTP ${resposta.status}).`);
+    }
     return resposta.json();
 }
 
-function linhaVazia(mensagem) {
+function formatarData(valor) {
+    if (!valor) return '—';
+    const data = new Date(valor);
+    return Number.isNaN(data.getTime())
+        ? '—'
+        : data.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function mostrarMensagem(texto) {
     const linha = document.createElement('tr');
     const celula = document.createElement('td');
-    celula.colSpan = 4;
-    celula.textContent = mensagem;
+    celula.colSpan = 6;
+    celula.textContent = texto;
     linha.appendChild(celula);
     corpo.appendChild(linha);
 }
 
-function mostrarInscritos() {
-    corpo.replaceChildren();
+function exibirTabela() {
     const termo = busca.value.trim().toLocaleLowerCase('pt-BR');
-    const encontrados = inscritos.filter(inscricao =>
-        String(inscricao.participante?.nome || '').toLocaleLowerCase('pt-BR').includes(termo) ||
-        String(inscricao.participante?.email || '').toLocaleLowerCase('pt-BR').includes(termo)
-    );
+    const eventoId = filtroEvento.value;
+    const filtradas = todasInscricoes.filter(registro => {
+        const campos = [registro.nome, registro.email, registro.evento];
+        return (!eventoId || String(registro.eventoId) === eventoId) &&
+            campos.some(valor => String(valor).toLocaleLowerCase('pt-BR').includes(termo));
+    });
 
-    resumo.textContent = `${inscritos.length} inscrição(ões) no evento. ${encontrados.length} exibida(s).`;
-    if (!encontrados.length) {
-        linhaVazia(termo ? 'Nenhum participante corresponde à busca.' : 'Ainda não há inscrições neste evento.');
+    corpo.replaceChildren();
+    resumo.textContent = `${filtradas.length} inscrição(ões) exibida(s) de ${todasInscricoes.length} no total.`;
+
+    if (!filtradas.length) {
+        mostrarMensagem(todasInscricoes.length ? 'Nenhuma inscrição encontrada com esses filtros.' : 'Ainda não há inscrições cadastradas.');
         return;
     }
 
-    encontrados.forEach(inscricao => {
+    filtradas.forEach(registro => {
         const linha = document.createElement('tr');
-        [
-            inscricao.participante?.nome || '—',
-            inscricao.participante?.email || '—',
-            inscricao.status || '—',
-            formatarDataInscricao(inscricao.criada_em)
-        ].forEach(valor => {
-            const celula = document.createElement('td');
-            celula.textContent = valor;  // Nunca usar innerHTML com dados de usuários.
-            linha.appendChild(celula);
-        });
+        [registro.id, registro.nome, registro.email, registro.evento, registro.situacao, formatarData(registro.data)]
+            .forEach(valor => {
+                const celula = document.createElement('td');
+                // Dados dos participantes sempre como texto, sem interpretar HTML.
+                celula.textContent = String(valor ?? '—');
+                linha.appendChild(celula);
+            });
         corpo.appendChild(linha);
     });
 }
 
-async function carregarInscricoes() {
-    const idDaConsulta = ++carregamentoId;
-    const id = seletor.value;
-    inscritos = [];
-    corpo.replaceChildren();
-    resumo.textContent = 'Consultando inscritos...';
-    if (!id) {
-        linhaVazia('Selecione um evento acima.');
-        textoStatus('Selecione um evento para consultar.');
-        return;
-    }
-
+async function carregarTabela() {
     atualizar.disabled = true;
-    textoStatus('Carregando inscrições...');
-    try {
-        const resposta = await consultarJson(`/api/eventos/${encodeURIComponent(id)}/inscricoes`);
-        if (idDaConsulta !== carregamentoId) return;
-        if (!Array.isArray(resposta)) throw new Error('Formato inesperado na API.');
-        inscritos = resposta;
-        mostrarInscritos();
-        textoStatus('Lista atualizada.');
-    } catch (erro) {
-        if (idDaConsulta !== carregamentoId) return;
-        resumo.textContent = 'Não foi possível consultar os participantes.';
-        corpo.replaceChildren();
-        linhaVazia('Não foi possível consultar os participantes.');
-        textoStatus(erro.message, true);
-    } finally {
-        if (idDaConsulta === carregamentoId) atualizar.disabled = false;
-    }
-}
+    statusPagina.textContent = 'Buscando inscrições...';
+    statusPagina.className = '';
 
-async function inicializarOrganizacao() {
     try {
-        const eventos = await consultarJson('/api/eventos');
-        if (!Array.isArray(eventos)) throw new Error('Formato inesperado da lista de eventos.');
-        seletor.replaceChildren();
-        if (!eventos.length) {
-            const option = document.createElement('option');
-            option.textContent = 'Nenhum evento cadastrado';
-            option.value = '';
-            seletor.appendChild(option);
-            textoStatus('Cadastre um evento no painel administrativo para iniciar.');
-            corpo.replaceChildren();
-            linhaVazia('Nenhum evento cadastrado.');
-            return;
-        }
+        const eventos = await buscarJson('/api/eventos');
+        if (!Array.isArray(eventos)) throw new Error('Formato de eventos inválido.');
+
+        const resultados = await Promise.all(eventos.map(async evento => {
+            const inscricoes = await buscarJson(`/api/eventos/${encodeURIComponent(evento.id)}/inscricoes`);
+            if (!Array.isArray(inscricoes)) throw new Error('Formato de inscrições inválido.');
+            return inscricoes.map(inscricao => ({
+                id: inscricao.id,
+                nome: inscricao.participante?.nome || '—',
+                email: inscricao.participante?.email || '—',
+                evento: evento.titulo || '—',
+                eventoId: evento.id,
+                situacao: inscricao.status || '—',
+                data: inscricao.criada_em
+            }));
+        }));
+
+        todasInscricoes = resultados.flat();
+        todasInscricoes.sort((a, b) => (Date.parse(b.data) || 0) - (Date.parse(a.data) || 0));
+
+        const escolhaAnterior = filtroEvento.value;
+        filtroEvento.replaceChildren();
+        const todos = document.createElement('option');
+        todos.value = '';
+        todos.textContent = 'Todos os eventos';
+        filtroEvento.appendChild(todos);
         eventos.forEach(evento => {
-            const option = document.createElement('option');
-            option.value = evento.id;
-            option.textContent = evento.titulo;
-            seletor.appendChild(option);
+            const opcao = document.createElement('option');
+            opcao.value = String(evento.id);
+            opcao.textContent = evento.titulo;
+            filtroEvento.appendChild(opcao);
         });
-        seletor.value = String(eventos[0].id);
-        await carregarInscricoes();
+        if ([...filtroEvento.options].some(opcao => opcao.value === escolhaAnterior)) {
+            filtroEvento.value = escolhaAnterior;
+        }
+        exibirTabela();
+        statusPagina.textContent = 'Lista atualizada.';
     } catch (erro) {
-        seletor.replaceChildren();
-        textoStatus(erro.message, true);
+        todasInscricoes = [];
         corpo.replaceChildren();
-        linhaVazia('Não foi possível carregar os eventos.');
+        mostrarMensagem('Não foi possível carregar a lista de inscritos.');
+        resumo.textContent = 'Inscrições indisponíveis.';
+        statusPagina.textContent = erro.message;
+        statusPagina.className = 'erro';
+    } finally {
+        atualizar.disabled = false;
     }
 }
 
-seletor.addEventListener('change', carregarInscricoes);
-atualizar.addEventListener('click', carregarInscricoes);
-busca.addEventListener('input', mostrarInscritos);
-inicializarOrganizacao();
+busca.addEventListener('input', exibirTabela);
+filtroEvento.addEventListener('change', exibirTabela);
+atualizar.addEventListener('click', carregarTabela);
+carregarTabela();

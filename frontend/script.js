@@ -164,7 +164,35 @@ formulario.addEventListener('submit', async event => {
             throw new Error(dados.mensagem || `Erro ${resposta.status} ao confirmar inscrição.`);
         }
 
-        formulario.reset();
+        formulario.reset();        // Só exibe o comprovante depois que a API confirmou o registro.
+        // Os dados ficam temporariamente nesta aba; nunca vão para a URL.
+        const resumoInscricao = {
+            id: dados.id,
+            nome: dados.participante?.nome || nome,
+            email: dados.participante?.email || email,
+            evento: escolhido.titulo,
+            local: escolhido.local,
+            inicio: escolhido.data_inicio,
+            status: dados.status,
+            criadoEm: Date.now()
+        };
+        if (dados.status === 'confirmada' && dados.id &&
+                typeof window !== 'undefined' && window.sessionStorage &&
+                typeof window.location?.assign === 'function') {
+            try {
+                window.sessionStorage.setItem(
+                    'semana_academica_inscricao_confirmada_v1',
+                    JSON.stringify(resumoInscricao)
+                );
+                window.location.assign('/inscricao-confirmada/');
+                return;
+            } catch (erroNavegador) {
+                console.warn('Falha ao abrir a página de confirmação:', erroNavegador);
+                // A inscrição já foi gravada: mantém a mensagem de sucesso nesta tela.
+            }
+        }
+
+
         eventoSelecionadoId = null;
         exibirMensagem(`Inscrição de ${nome} confirmada com sucesso!`, 'sucesso');
 

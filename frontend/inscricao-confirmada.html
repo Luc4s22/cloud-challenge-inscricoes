@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Inscrição confirmada | Semana Acadêmica</title>
+    <link rel="stylesheet" href="{% static 'frontend/style.css' %}">
+    <style>
+        .confirmacao-corpo { min-height: 100vh; background: #f7f9f7; display: grid; place-items: center; padding: 28px 16px; }
+        .confirmacao-cartao { width: 100%; max-width: 620px; background: white; border: 1px solid #e1e9e4; border-radius: 18px; padding: clamp(24px, 5vw, 44px); box-shadow: 0 12px 32px rgba(15, 46, 32, .07); }
+        .confirmacao-icone { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: #e2f6e8; color: #247c43; font-size: 28px; margin-bottom: 18px; }
+        .confirmacao-cartao h1 { margin: 0 0 10px; color: #183e2b; font-size: clamp(1.55rem, 4vw, 2rem); }
+        .confirmacao-cartao .explicacao { color: #516458; margin: 0 0 22px; line-height: 1.6; }
+        .confirmacao-dados { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 22px 0; padding: 22px; background: #f5f9f6; border-radius: 12px; }
+        .confirmacao-campo { min-width: 0; }
+        .confirmacao-campo.largura-total { grid-column: 1 / -1; }
+        .confirmacao-campo span { display: block; color: #5d7165; font-size: .85rem; margin-bottom: 5px; }
+        .confirmacao-campo strong { display: block; overflow-wrap: anywhere; color: #183e2b; }
+        .confirmacao-acoes { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 25px; }
+        .confirmacao-voltar { display: inline-flex; justify-content: center; align-items: center; background: #215b39; color: white; text-decoration: none; padding: 12px 20px; border-radius: 9px; font-weight: 600; }
+        .confirmacao-voltar:hover { background: #18452c; color: white; }
+        .confirmacao-cartao [hidden] { display: none !important; }
+        @media (max-width: 480px) { .confirmacao-dados { grid-template-columns: 1fr; } .confirmacao-campo.largura-total { grid-column: auto; } }
+        @media print { .confirmacao-corpo { background: white; padding: 0; } .confirmacao-cartao { box-shadow: none; border: none; } .confirmacao-acoes { display: none; } }
+    </style>
+</head>
+<body class="confirmacao-corpo">
+    <main class="confirmacao-cartao">
+        <div id="confirmacao-conteudo" hidden>
+            <div class="confirmacao-icone" aria-hidden="true">✓</div>
+            <h1>Inscrição confirmada!</h1>
+            <p class="explicacao">Sua inscrição foi registrada com sucesso. Confira os dados abaixo.</p>
+            <div class="confirmacao-dados">
+                <div class="confirmacao-campo largura-total"><span>Evento</span><strong id="recibo-evento"></strong></div>
+                <div class="confirmacao-campo"><span>Participante</span><strong id="recibo-nome"></strong></div>
+                <div class="confirmacao-campo"><span>E-mail informado</span><strong id="recibo-email"></strong></div>
+                <div class="confirmacao-campo"><span>Data e horário</span><strong id="recibo-data"></strong></div>
+                <div class="confirmacao-campo"><span>Local</span><strong id="recibo-local"></strong></div>
+                <div class="confirmacao-campo"><span>Situação</span><strong id="recibo-status">Confirmada</strong></div>
+                <div class="confirmacao-campo"><span>Número da inscrição</span><strong id="recibo-id"></strong></div>
+            </div>
+            <p class="explicacao">Guarde esta página se quiser consultar os dados depois. Ela mostra somente a inscrição feita neste navegador.</p>
+        </div>
+        <div id="confirmacao-ausente" hidden>
+            <h1>Nenhuma inscrição para exibir</h1>
+            <p class="explicacao">Esta página mostra o resumo logo após uma inscrição concluída. Volte aos eventos e faça sua inscrição.</p>
+        </div>
+        <div class="confirmacao-acoes">
+            <a class="confirmacao-voltar" href="/#eventos">Voltar aos eventos</a>
+            <button type="button" id="imprimir-confirmacao" class="btn-secundario" hidden>Imprimir resumo</button>
+        </div>
+    </main>
+    <script>
+        (function () {
+            'use strict';
+            const chave = 'semana_academica_inscricao_confirmada_v1';
+            let dados = null;
+            try {
+                const armazenado = window.sessionStorage.getItem(chave);
+                if (armazenado) dados = JSON.parse(armazenado);
+            } catch (erro) {
+                console.warn('Não foi possível ler os dados temporários da inscrição.', erro);
+            }
+            const valido = dados && Number.isInteger(Number(dados.id)) && Number(dados.id) > 0 &&
+                typeof dados.nome === 'string' && typeof dados.evento === 'string' &&
+                dados.status === 'confirmada' && Number.isFinite(Number(dados.criadoEm)) &&
+                Date.now() - Number(dados.criadoEm) >= 0 &&
+                Date.now() - Number(dados.criadoEm) < 30 * 60 * 1000;
+            if (!valido) {
+                document.getElementById('confirmacao-ausente').hidden = false;
+                return;
+            }
+            const preencher = (id, valor) => { document.getElementById(id).textContent = valor || '—'; };
+            const data = new Date(dados.inicio);
+            preencher('recibo-evento', dados.evento);
+            preencher('recibo-nome', dados.nome);
+            preencher('recibo-email', dados.email);
+            preencher('recibo-data', Number.isNaN(data.getTime()) ? 'A consultar' : data.toLocaleString('pt-BR', {dateStyle: 'full', timeStyle: 'short'}));
+            preencher('recibo-local', dados.local);
+            preencher('recibo-status', 'Confirmada');
+            preencher('recibo-id', String(dados.id));
+            document.getElementById('confirmacao-conteudo').hidden = false;
+            const botaoImprimir = document.getElementById('imprimir-confirmacao');
+            botaoImprimir.hidden = false;
+            botaoImprimir.addEventListener('click', () => window.print());
+        }());
+    </script>
+</body>
+</html>

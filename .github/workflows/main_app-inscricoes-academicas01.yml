@@ -1,4 +1,4 @@
-﻿name: Deploy Django e frontend no Azure - app-inscricoes-academicas01
+name: Deploy Django e frontend no Azure - app-inscricoes-academicas01
 
 on:
   push:
@@ -47,6 +47,7 @@ jobs:
         run: |
           mkdir -p backend/templates backend/static/frontend
           cp frontend/index.html backend/templates/index.html
+          cp frontend/inscricao-confirmada.html backend/templates/inscricao-confirmada.html
           cp frontend/style.css backend/static/frontend/style.css
           cp frontend/script.js backend/static/frontend/script.js
           cp frontend/organizacao.html backend/templates/organizacao.html
